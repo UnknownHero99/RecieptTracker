@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="section-title">
+    <h1>{{ receipt.description }}</h1>
+    <div class="title-actions">
+      <a class="button" href="{{ url_for('expenses') }}">Back</a>
+      <a class="button primary" href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}">Edit</a>
+    </div>
+  </div>
+
+  <div class="detail-layout">
+    <div>
+      <dl class="detail-list">
+        <div>
+          <dt>Kategorija</dt>
+          <dd>{{ receipt.category }}</dd>
+        </div>
+        <div>
+          <dt>Datum</dt>
+          <dd>{{ format_date(receipt.date) }}</dd>
+        </div>
+        <div>
+          <dt>Dobavitelj</dt>
+          <dd>{{ receipt.vendor or "Neznano" }}</dd>
+        </div>
+        <div>
+          <dt>Račun / Ref.</dt>
+          <dd>{{ receipt.reference or "-" }}</dd>
+        </div>
+        <div>
+          <dt>Skupaj</dt>
+          <dd>{{ "%.2f"|format(receipt.total) }} €</dd>
+        </div>
+        <div>
+          <dt>Plačala Ana</dt>
+          <dd>{{ "%.2f"|format(receipt.ana_paid) }} €</dd>
+        </div>
+        <div>
+          <dt>Plačal Jakob</dt>
+          <dd>{{ "%.2f"|format(receipt.jakob_paid) }} €</dd>
+        </div>
+        <div>
+          <dt>Validation</dt>
+          <dd>
+            <span class="status-pill {{ validation_status.state }}">{{ validation_status.label }}</span>
+            {% if validation_status.created_at %}
+              <small>{{ format_datetime(validation_status.created_at) }}</small>
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+
+      {% if receipt.notes %}
+        <section class="detail-section">
+          <h2>Opombe</h2>
+          <p>{{ receipt.notes }}</p>
+        </section>
+      {% endif %}
+
+      <section class="detail-section">
+        <div class="section-title">
+          <h2>History</h2>
+          <form method="post" action="{{ url_for('validate_receipt_with_llm', receipt_id=receipt.id) }}">
+            <button class="button" type="submit">Validate</button>
+          </form>
+        </div>
+        <div class="audit-list">
+          {% for log in audit_logs %}
+            <div class="audit-item">
+              <div>
+                <strong>{{ log.action }}</strong>
+                {% if log.details_json.status %}
+                  <small>Status: {{ log.details_json.status }}</small>
+                {% endif %}
+                {% if log.details_json.issues %}
+                  <small>Issues: {{ log.details_json.issues|join("; ") }}</small>
+                {% endif %}
+                {% if log.details_json.suggestions %}
+                  <small>Suggestions: {{ log.details_json.suggestions|join("; ") }}</small>
+                {% endif %}
+              </div>
+              <span>{{ format_datetime(log.created_at) }}</span>
+            </div>
+          {% else %}
+            <div class="empty">No history yet.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <aside>
+      <div class="section-title">
+        <h2>Attachments</h2>
+        {% if receipt.files %}
+          <span class="file-badge attached">{{ receipt.files|length }} {{ "file" if receipt.files|length == 1 else "files" }}</span>
+        {% else %}
+          <span class="file-badge missing">No file</span>
+        {% endif %}
+      </div>
+      {% if receipt.files %}
+        <div class="receipt-gallery">
+          {% for file in receipt.files %}
+            <div class="receipt-preview-item">
+              {% if is_image_file(file.file_name) %}
+                <button
+                  class="receipt-preview lightbox-trigger"
+                  type="button"
+                  data-lightbox-src="{{ url_for('uploaded_file', file_name=file.file_name) }}"
+                  data-lightbox-title="{{ file.original_name }}"
+                >
+                  <img src="{{ url_for('uploaded_file', file_name=file.file_name) }}" alt="Receipt attachment">
+                </button>
+              {% else %}
+                <a class="receipt-preview" href="{{ url_for('uploaded_file', file_name=file.file_name) }}" target="_blank">
+                  <span>Open {{ file.original_name }}</span>
+                </a>
+              {% endif %}
+              <a class="attachment-name" href="{{ url_for('uploaded_file', file_name=file.file_name) }}" target="_blank">
+                <strong>{{ file_label(file.original_name) }}</strong>
+                <span>{{ file.original_name }}</span>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="receipt-preview empty-preview">No files uploaded.</div>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+
+<div class="lightbox" id="receipt-lightbox" hidden>
+  <button class="lightbox-backdrop" type="button" data-lightbox-close aria-label="Close preview"></button>
+  <div class="lightbox-dialog" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+    <div class="lightbox-header">
+      <strong id="lightbox-title">Receipt preview</strong>
+      <div class="title-actions">
+        <a class="button" id="lightbox-open" href="#" target="_blank">Open</a>
+        <button class="button" type="button" data-lightbox-close>Close</button>
+      </div>
+    </div>
+    <img id="lightbox-image" alt="Receipt preview">
+  </div>
+</div>
+
+<script>
+  const lightbox = document.querySelector("#receipt-lightbox");
+  const lightboxImage = document.querySelector("#lightbox-image");
+  const lightboxTitle = document.querySelector("#lightbox-title");
+  const lightboxOpen = document.querySelector("#lightbox-open");
+
+  function closeLightbox() {
+    if (!lightbox) return;
+    lightbox.hidden = true;
+    lightboxImage.removeAttribute("src");
+  }
+
+  document.querySelectorAll(".lightbox-trigger").forEach((button) => {
+    button.addEventListener("click", () => {
+      const src = button.dataset.lightboxSrc;
+      lightboxImage.src = src;
+      lightboxTitle.textContent = button.dataset.lightboxTitle || "Receipt preview";
+      lightboxOpen.href = src;
+      lightbox.hidden = false;
+    });
+  });
+
+  document.querySelectorAll("[data-lightbox-close]").forEach((button) => {
+    button.addEventListener("click", closeLightbox);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeLightbox();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="section-title">
+    <h1>Trash</h1>
+    <a class="button" href="{{ url_for('expenses') }}">Back</a>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt</th>
+          <th>Opis</th>
+          <th>Datum</th>
+          <th>Dobavitelj</th>
+          <th class="num">Skupaj</th>
+          <th>Deleted</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for receipt in receipts %}
+          <tr>
+            <td class="receipt-cell">
+              {% if receipt.files %}
+                {% set first_file = primary_preview_file(receipt.files) %}
+                <a class="receipt-thumb" href="{{ url_for('uploaded_file', file_name=first_file.file_name) }}" target="_blank">
+                  {% if is_image_file(first_file.file_name) %}
+                    <img src="{{ url_for('uploaded_file', file_name=first_file.file_name) }}" alt="Receipt for {{ receipt.description }}">
+                  {% else %}
+                    <span>{{ file_label(first_file.original_name) }}</span>
+                  {% endif %}
+                </a>
+              {% else %}
+                <span class="no-receipt">No file</span>
+              {% endif %}
+            </td>
+            <td><strong>{{ receipt.description }}</strong></td>
+            <td>{{ format_date(receipt.date) }}</td>
+            <td>{{ receipt.vendor }}</td>
+            <td class="num">{{ "%.2f"|format(receipt.total) }} €</td>
+            <td>{{ format_date(receipt.deleted_at[:10]) }}</td>
+            <td class="actions">
+              <form method="post" action="{{ url_for('restore_receipt', receipt_id=receipt.id) }}">
+                <button type="submit">Restore</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="7" class="empty">Trash is empty.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

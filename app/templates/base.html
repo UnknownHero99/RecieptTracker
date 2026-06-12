@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vesel Salmič</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <a class="brand" href="{{ url_for('index') }}">Vesel Salmič</a>
+        <p>Receipt archive and renovation cost tracking</p>
+      </div>
+      <nav>
+        <a class="{% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Overview</a>
+        <a class="{% if request.endpoint in ['expenses', 'receipt_detail', 'edit_receipt', 'new_receipt', 'scan_receipt', 'create_receipt', 'update_receipt'] %}active{% endif %}" href="{{ url_for('expenses') }}">Expenses</a>
+        <a class="{% if request.endpoint == 'trash' %}active{% endif %}" href="{{ url_for('trash') }}">Trash</a>
+        <a class="{% if request.endpoint == 'backups' %}active{% endif %}" href="{{ url_for('backups') }}">Backups</a>
+        <a class="button primary" href="{{ url_for('new_receipt') }}">Add receipt</a>
+      </nav>
+    </header>
+
+    <main>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div>{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

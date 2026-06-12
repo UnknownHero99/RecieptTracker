@@ -1,0 +1,29 @@
+services:
+  receipts:
+    image: ghcr.io/unknownhero99/reciepttracker:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - /mnt/YOUR_POOL/apps/home-renovation/data:/app/data
+    environment:
+      FLASK_SECRET_KEY: change-this-to-a-long-random-value
+      MAX_UPLOAD_MB: "128"
+      LLM_BASE_URL: "https://openrouter.ai/api/v1"
+      LLM_MODEL: "qwen/qwen3.6-flash"
+      LLM_API_KEY: "sk-or-replace-me"
+      LLM_FALLBACK_BASE_URL: "http://192.168.10.10:9292"
+      LLM_FALLBACK_MODEL: "Gemma4-E4B"
+      LLM_FALLBACK_API_KEY: "local"
+      OPENROUTER_SITE_URL: ""
+      OPENROUTER_APP_NAME: "Vesel Salmič"
+      LLM_TIMEOUT_SECONDS: "45"
+      LLM_MAX_TOKENS: "8192"
+      LLM_OCR_CHARS: "14000"
+      LLM_SEND_IMAGES: "1"
+      LLM_IMAGE_MAX_FILES: "6"
+      LLM_IMAGE_MAX_PDF_PAGES: "3"
+      LLM_IMAGE_MAX_SIDE: "1600"
+      LLM_IMAGE_JPEG_QUALITY: "85"
+      BACKUP_INTERVAL_HOURS: "24"
+      BACKUP_RETENTION_DAYS: "30"

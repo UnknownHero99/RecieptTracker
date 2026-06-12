@@ -1,0 +1,6 @@
+data/
+app/static/uploads/
+__pycache__/
+*.pyc
+.DS_Store
+.git/

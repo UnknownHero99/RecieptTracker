@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="section-title">
+    <h1>Stroški</h1>
+    <a class="button" href="{{ url_for('export_csv') }}">Export CSV</a>
+  </div>
+  <section class="summary-grid filtered-summary">
+    <article class="metric">
+      <span>Filtered total</span>
+      <strong>{{ "%.2f"|format(filtered_summary.total) }} €</strong>
+    </article>
+    <article class="metric">
+      <span>Entries</span>
+      <strong>{{ filtered_summary.count }}</strong>
+    </article>
+    <article class="metric">
+      <span>Ana / Jakob</span>
+      <strong>{{ "%.2f"|format(filtered_summary.ana) }} € / {{ "%.2f"|format(filtered_summary.jakob) }} €</strong>
+    </article>
+  </section>
+  <form class="filters" method="get">
+    <input name="q" value="{{ filters.q }}" placeholder="Search description, vendor, ref">
+    <select name="category">
+      <option value="">All categories</option>
+      {% for category in categories %}
+        <option value="{{ category }}" {% if filters.category == category %}selected{% endif %}>{{ category }}</option>
+      {% endfor %}
+    </select>
+    <select name="vendor">
+      <option value="">All vendors</option>
+      {% for vendor in vendors %}
+        <option value="{{ vendor }}" {% if filters.vendor == vendor %}selected{% endif %}>{{ vendor }}</option>
+      {% endfor %}
+    </select>
+    <select name="payer">
+      <option value="">Any payer</option>
+      <option value="Ana" {% if filters.payer == "Ana" %}selected{% endif %}>Ana</option>
+      <option value="Jakob" {% if filters.payer == "Jakob" %}selected{% endif %}>Jakob</option>
+    </select>
+    <input type="hidden" name="sort" value="{{ sort_state.sort }}">
+    <input type="hidden" name="direction" value="{{ sort_state.direction }}">
+    <button class="button" type="submit">Filter</button>
+    {% if filters.q or filters.category or filters.vendor or filters.payer %}
+      <a class="button" href="{{ url_for('expenses', sort=sort_state.sort, direction=sort_state.direction) }}">Clear</a>
+    {% endif %}
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt</th>
+          <th>Opis</th>
+          <th><a class="sort-link {% if sort_state.sort == 'category' %}active{% endif %}" href="{{ expense_sort_url('category') }}">Kategorija{% if sort_state.sort == 'category' %} {{ sort_state.direction }}{% endif %}</a></th>
+          <th><a class="sort-link {% if sort_state.sort == 'date' %}active{% endif %}" href="{{ expense_sort_url('date') }}">Datum{% if sort_state.sort == 'date' %} {{ sort_state.direction }}{% endif %}</a></th>
+          <th><a class="sort-link {% if sort_state.sort == 'vendor' %}active{% endif %}" href="{{ expense_sort_url('vendor') }}">Dobavitelj{% if sort_state.sort == 'vendor' %} {{ sort_state.direction }}{% endif %}</a></th>
+          <th>Račun / Ref.</th>
+          <th>Plačnik</th>
+          <th>Validation</th>
+          <th class="num"><a class="sort-link {% if sort_state.sort == 'amount' %}active{% endif %}" href="{{ expense_sort_url('amount') }}">Znesek{% if sort_state.sort == 'amount' %} {{ sort_state.direction }}{% endif %}</a></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for receipt in receipts %}
+          <tr>
+            <td class="receipt-cell">
+              {% if receipt.files %}
+                {% set first_file = primary_preview_file(receipt.files) %}
+                <a class="receipt-thumb" href="{{ url_for('uploaded_file', file_name=first_file.file_name) }}" target="_blank" title="Open attachment">
+                  {% if is_image_file(first_file.file_name) %}
+                    <img src="{{ url_for('uploaded_file', file_name=first_file.file_name) }}" alt="Receipt for {{ receipt.description }}">
+                  {% else %}
+                    <span>{{ file_label(first_file.original_name) }}</span>
+                  {% endif %}
+                </a>
+                <span class="file-badge attached">{{ receipt.files|length }} {{ "file" if receipt.files|length == 1 else "files" }}</span>
+              {% else %}
+                <span class="no-receipt">No file</span>
+                <span class="file-badge missing">No file</span>
+              {% endif %}
+            </td>
+            <td>
+              <a class="description-link" href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">
+                <strong>{{ receipt.description }}</strong>
+              </a>
+              {% if receipt.notes %}<small>{{ receipt.notes }}</small>{% endif %}
+            </td>
+            <td>{{ receipt.category }}</td>
+            <td>{{ format_date(receipt.date) }}</td>
+            <td>{{ receipt.vendor }}</td>
+            <td>{{ receipt.reference }}</td>
+            <td>
+              {% if receipt.ana_paid > 0 and receipt.jakob_paid > 0 %}
+                <span class="payer-pill split">Ana + Jakob</span>
+              {% elif receipt.ana_paid > 0 %}
+                <span class="payer-pill">Ana</span>
+              {% elif receipt.jakob_paid > 0 %}
+                <span class="payer-pill">Jakob</span>
+              {% else %}
+                <span class="payer-pill muted">Neznano</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="status-pill {{ receipt.validation_status.state }}">{{ receipt.validation_status.label }}</span>
+              {% if receipt.validation_status.created_at %}
+                <small>{{ format_datetime(receipt.validation_status.created_at) }}</small>
+              {% endif %}
+            </td>
+            <td class="num">{{ "%.2f"|format(receipt.total) }} €</td>
+            <td class="actions">
+              <a href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">View</a>
+              <a href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}">Edit</a>
+              {% if receipt.files %}
+                {% if receipt.files|length > 1 %}
+                  <a href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">Open</a>
+                {% else %}
+                  <a href="{{ url_for('uploaded_file', file_name=primary_preview_file(receipt.files).file_name) }}" target="_blank">Open</a>
+                {% endif %}
+              {% endif %}
+              <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}" onsubmit="return confirm('Move this expense to trash?');">
+                <button type="submit">Delete</button>
+              </form>
+              <form method="post" action="{{ url_for('validate_receipt_with_llm', receipt_id=receipt.id) }}">
+                <button type="submit">Validate</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="10" class="empty">
+              <div>No matching expenses.</div>
+              {% if filters.q or filters.category or filters.vendor or filters.payer %}
+                <a class="button" href="{{ url_for('expenses') }}">Clear filters</a>
+              {% else %}
+                <a class="button" href="{{ url_for('new_receipt') }}">Add receipt</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

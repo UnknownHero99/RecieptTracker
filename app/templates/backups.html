@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+  <div class="section-title">
+    <h1>Backups</h1>
+    <div class="title-actions">
+      <a class="button" href="{{ url_for('download_database') }}">Download current DB</a>
+      <form method="post" action="{{ url_for('run_backup') }}">
+        <button class="button primary" type="submit">Create backup</button>
+      </form>
+    </div>
+  </div>
+
+  <section class="summary-grid filtered-summary">
+    <article class="metric">
+      <span>Last backup</span>
+      <strong>{{ format_datetime(last_backup_at) or "Never" }}</strong>
+    </article>
+    <article class="metric">
+      <span>Interval</span>
+      <strong>{{ backup_interval_hours }} h</strong>
+    </article>
+    <article class="metric">
+      <span>Retention</span>
+      <strong>{{ backup_retention_days }} d</strong>
+    </article>
+  </section>
+
+  <div class="table-wrap">
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th>Backup</th>
+          <th>Created</th>
+          <th class="num">Size</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for backup in backups %}
+          <tr>
+            <td><strong>{{ backup.name }}</strong></td>
+            <td>{{ format_datetime(backup.modified_at) }}</td>
+            <td class="num">{{ format_file_size(backup.size) }}</td>
+            <td class="actions">
+              <a href="{{ url_for('download_backup', file_name=backup.name) }}">Download</a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4" class="empty">
+              <div>No backups yet.</div>
+              <form method="post" action="{{ url_for('run_backup') }}">
+                <button class="button" type="submit">Create backup</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

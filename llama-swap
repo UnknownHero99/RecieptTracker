@@ -1,0 +1,54 @@
+{
+  "model": "qwen/qwen3.6-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You may reason internally if supported, but final assistant content must contain only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Extract receipt fields from OCR. Return ONLY one compact JSON object with these exact keys:\ndescription, category, date, vendor, reference, total, ana_paid, jakob_paid, notes.\n\nRules:\n- No markdown, no explanation.\n- Unknown values: null.\n- date: YYYY-MM-DD.\n- money fields: number, not string.\n- category: prefer one of [\"Gradbena dela\", \"Instalacije\", \"Materiali\", \"Ostalo\", \"Pohištvo / oprema\", \"Projektiranje\"], otherwise concise new category.\n- vendor: prefer one of [\"5 Fiver\", \"Bauhaus\", \"Gorazd Mravlja\", \"K3ern\", \"Kamm\", \"Les bled\", \"Lidl\", \"Merkur\", \"OBI\", \"Top Dom\", \"Uni Gradnje d.o.o.\", \"inled\"] if it matches.\n- description: short purchase summary, max 8 words. Do NOT include vendor name because vendor has its own field. Example: \"Knauf material\" or \"Parna zapora in vijaki\". Do NOT list all items here.\n- notes: newline-separated bullet list with ONLY important info:\n  purchased item summaries, final payment, prepayment note if relevant, and invoice/reference.\n  Do NOT include legal warranty text, tax IDs, addresses, loyalty points, customer data, OCR noise, or generic filler.\n  Example \"- Parna zapora Knauf\n- Vijaki Knauf\n- Plačilo: Mastercard 42,41 EUR\".\n- reference: invoice/receipt number from \"Številka\" / \"Stevilka\" / \"Račun\". Do NOT use \"POSEL\", \"Veza\", customer number, tax number, or loyalty card number as reference.\n- total: final amount paid / renovation cost including DDV/VAT.\n- OCR can contain multiple photos/pages of the SAME receipt. Merge them into one entry.\n- If both \"RAČUN\" and \"RAČUN za PREDPLAČILO\" appear, the main \"RAČUN\" is authoritative.\n- Do NOT use \"RAČUN za PREDPLAČILO\" number, items, or amount as the main reference/description/total when a main receipt is present.\n- Prepayment can be mentioned in notes only. Include prepayment items in notes if they are visible.\n- The OCR text may have prepayment-only pages removed before this prompt. If so, use the remaining main receipt as authoritative.\n- If \"Prejeta plačila\", \"Skupaj plačila\", card payment, or cash payment appears, use that payment amount as total.\n- For Merkur receipts, prefer \"Prejeta plačila\" / \"Skupaj plačila\" over \"Davčna osnova\", \"Vrednost brez DDV\", and earlier \"Skupaj\".\n- If the only visible amount belongs to \"RAČUN za PREDPLAČILO\", set total to null instead of using that prepayment amount.\n- payer split is usually unknown, so ana_paid and jakob_paid should be null unless OCR explicitly says who paid.\n\nOCR:\n--- 17805258749523544045327932353706.jpg ---\nMERKUR trgovina, d.o.o.\n\n4202 Naklo, Cesta ha Okroglo 7, Slovenija\n\nDatum izpisa:\n\nStran: 1/2\n\n02.06.2026\n\na vee JA\nidentifikacijska št SW bpv: si76138437\nTANS (4386) 45834300 Faks: (1386) 45834300 B20260024502211802488\nRAČUN\nKu :170285 a\nIdent, št za DDV: SI32812604 Note dB! geo 42788\nnam Neto dni:\nDatum / čas: 02.06.2026 / 17:15:45\nGRAJSKA GOSTILNICA, BORUT SALMIČ S.P. Zapadicst: 02.06.2026\nKRANJSKA CESTA 2 Datum opravljene dobave: 02.06.2026\nValuta: EUR\nNE ko VEJICA Način odpreme: OSEBNI PREVZEM\nVeza: POSEL 245/005305, z dne: 02.06.2026\nm Cena Vrednost %DDV\nJem šina Naziv artikla Količina EM Akcijski popust Vred. pop.\n5012061931488 PARNA ZAPORA ZA GRADBEN. KNAUFINSULATION 12,00 M2 1,7131 18,5000 22,00\n; 2492677 HOMESEAL LDS 100 L=50M $=2M ROL=100 M2\nAkcija: 10% popust na nakup 10,00% 2,0574\n4 2 4003982319951 PRITRDILNI MATERIAL KNAUF VIJAK LB 3.5 X 9,5 MM 1,00 CNT 4,0902 3,6804 22,00\n2468823 PROF.NA KOV.PODK. Z=100K\nAkcija: 10% popust na nakup 10,00% 0,4098\n3 4003982245694 FINALNI MATERIAL KNAUF NAVADNI UNIFLOT 5 KG MASA 1,00 KOS 9,8279 8,8443 22,00\n2152191 ZA FUGIRANJE STIKOV\nAkcija: 10% popust na nakup 10,00% 0,9836\nDavčna osnova %DDV Vrednost DDV Vrednost brez DDV 31,02\n31,02 22,00 6,83\n31,02 6,83 Vrednost DDV 6,83\nSkupaj 37,85\nMASTERCARD 37,85\nŽe plačan davek Po rač. za predplačilo:\n\nDavčna osnova\n\n%DDV | Vrednost DDV\n245-21-42787 3,74 22,00\n\n0,82\n\nSkupaj plačano\n\nS735\nPrejeta plačila:\nMASTERCARD : 42,41\nSkupaj plačila : 42,41\n\nBIZ Zate kartica: B1 70285\n\nStaro stanje BIZ statusnih točk: 4.389,13\nNovo stan\n\nje BIZ statusnih točk: 4.426,98\nl.izjavljamo, da Smo obveznosti iz nasi j 2 i\npogodbi fering See ova ravnanja z odpadno embalažo prenesli\nIzjavljamo, da smo obveznosti iz naslo\nizdana VRAČLJIVA EMBALAŽA\n2. Kot prodajalec baterij in ak\n\nna družbo za ravnanje z odpadno embalažo Surovina d.o.o. po\nva ravnanja z odpadnimi\n\nje predmet vračila,\numulatorjev zagotavli\n\ngumami prenesli na družbo Slopak d.o.o, po pogodbi številka 417/1G-20.\nJamo prevzemanje odpadnih baterij in akumulatorjev, ki nam jih bodo prepustili imetniki,\n\nHVALA ZA nNakypi\n\n--- RELATED PREPAYMENT PAGES OMITTED AS MAIN RECEIPT SOURCE ---\n- 2 Kupec: 170285 RAČUN ZA PREDPLAČILO\n- Ident. št. za DDV: $132812604 Stevilka: 245-21-42787\n- Šifra Naziv artikla Količina EM\n- 1 3838479996138 PODKONSTRUKCIJSKI PROFIL MQ UD 28/3000 ZA STROP 1,00 KOS 4,16 3,74 77.00\n- 2808619 OBROBNI\n- Davčna osnova LEE KIRN VREDNOST PREDPLAČILA Z VKLJUČENIM DDV 4,56\n- a = oes MASTERCARD : 4,56"
+    }
+  ],
+  "max_tokens": 8192,
+  "response_format": {
+    "type": "json_object"
+  }
+}
+
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"description\": \"Parna zapora, vijaki, masa Knauf\",\n  \"category\": \"Materiali\",\n  \"date\": \"2026-06-02\",\n  \"vendor\": \"Merkur\",\n  \"reference\": \"245/005305\",\n  \"total\": 42.41,\n  \"ana_paid\": null,\n  \"jakob_paid\": null,\n  \"notes\": \"- Parna zapora Knauf\\n- Vijaki Knauf\\n- Masa Knauf\\n- Prejeta plačila: Mastercard 42,41 EUR\\n- Preplačilo: 4,56 EUR (profil MQ)\"\n}"
+      }
+    }
+  ],
+  "created": 1780525955,
+  "model": "qwen/qwen3.6-flash",
+  "system_fingerprint": "b9468-354ebac8c",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 164,
+    "prompt_tokens": 2129,
+    "total_tokens": 2293,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "id": "chatcmpl-y4oAH0dOh52CdK71rhHWqKKidV6pwblB",
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 2129,
+    "prompt_ms": 3269.246,
+    "prompt_per_token_ms": 1.53557820573039,
+    "prompt_per_second": 651.2204954903974,
+    "predicted_n": 164,
+    "predicted_ms": 4151.217,
+    "predicted_per_token_ms": 25.312298780487804,
+    "predicted_per_second": 39.50648689287985
+  }
+}

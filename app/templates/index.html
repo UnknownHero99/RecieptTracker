@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="summary-grid">
+  <article class="metric">
+    <span>Skupaj stroški</span>
+    <strong>{{ "%.2f"|format(summary.total) }} €</strong>
+  </article>
+  <article class="metric">
+    <span>Plačala Ana</span>
+    <strong>{{ "%.2f"|format(summary.ana) }} €</strong>
+  </article>
+  <article class="metric">
+    <span>Plačal Jakob</span>
+    <strong>{{ "%.2f"|format(summary.jakob) }} €</strong>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="section-title">
+    <h1>Pregled po kategorijah</h1>
+    <a class="button" href="{{ url_for('expenses') }}">View expenses</a>
+  </div>
+  <div class="category-list">
+    {% for category in categories %}
+      {% set row = summary.categories|selectattr("category", "equalto", category)|first %}
+      {% set value = row.total if row else 0 %}
+      {% set percent = (value / summary.total * 100) if summary.total else 0 %}
+      <div class="category-row">
+        <div class="category-label">
+          <a href="{{ url_for('expenses', category=category) }}">{{ category }}</a>
+          <strong>{{ "%.2f"|format(value) }} €</strong>
+        </div>
+        <div class="bar"><span style="width: {{ percent }}%"></span></div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-title">
+    <h1>Pregled po dobaviteljih</h1>
+  </div>
+  <div class="vendor-list">
+    {% for row in summary.vendors %}
+      {% set percent = (row.total / summary.total * 100) if summary.total else 0 %}
+      <div class="vendor-row">
+        <div class="vendor-label">
+          {% if row.vendor == "Neznano" %}
+            <span>{{ row.vendor }}</span>
+          {% else %}
+            <a href="{{ url_for('expenses', vendor=row.vendor) }}">{{ row.vendor }}</a>
+          {% endif %}
+          <small>{{ row.count }} entries</small>
+          <strong>{{ "%.2f"|format(row.total) }} €</strong>
+        </div>
+        <div class="bar"><span style="width: {{ percent }}%"></span></div>
+      </div>
+    {% else %}
+      <div class="empty">No vendors yet.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-title">
+    <h1>Recent expenses</h1>
+    <a class="button" href="{{ url_for('expenses') }}">View all</a>
+  </div>
+  <div class="table-wrap">
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th>Opis</th>
+          <th>Datum</th>
+          <th>Dobavitelj</th>
+          <th>Files</th>
+          <th class="num">Znesek</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for receipt in recent_receipts %}
+          <tr>
+            <td>
+              <a class="description-link" href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">
+                <strong>{{ receipt.description }}</strong>
+              </a>
+              <small>{{ receipt.category }}</small>
+            </td>
+            <td>{{ format_date(receipt.date) }}</td>
+            <td>{{ receipt.vendor }}</td>
+            <td>
+              {% if receipt.files %}
+                <span class="file-badge attached">{{ receipt.files|length }} {{ "file" if receipt.files|length == 1 else "files" }}</span>
+              {% else %}
+                <span class="file-badge missing">No file</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ "%.2f"|format(receipt.total) }} €</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="empty">
+              <div>No expenses yet.</div>
+              <a class="button" href="{{ url_for('new_receipt') }}">Add receipt</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

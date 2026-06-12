@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel upload-panel">
+  <div>
+    <h1>{{ page_title }}</h1>
+    <p class="upload-copy">Dodaj vse strani računa, potem pošlji slike v model.</p>
+  </div>
+  <form class="upload-form guided-upload" method="post" action="{{ url_for('scan_receipt') }}" enctype="multipart/form-data">
+    <input id="receipt-files" class="file-submit-input" type="file" name="receipt" accept="image/*,.pdf" multiple>
+    <input id="add-files" class="file-picker" type="file" accept="image/*,.pdf" multiple>
+    <div class="upload-actions">
+      <label class="button" for="add-files">Dodaj datoteke</label>
+      <button class="button primary" type="submit">Pošlji slike v model</button>
+    </div>
+    <div id="queued-files" class="queued-files" aria-live="polite"></div>
+  </form>
+</section>
+
+<section class="form-layout">
+  <form class="panel receipt-form" method="post" action="{{ form_action }}" enctype="multipart/form-data">
+    <div class="section-title">
+      <h2>{{ page_title }}</h2>
+      {% if files %}
+        <a href="{{ url_for('uploaded_file', file_name=files[0].file_name) }}" target="_blank">Open first file</a>
+      {% endif %}
+    </div>
+
+    <input type="hidden" name="file_name" value="{{ draft.file_name }}">
+    <input type="hidden" name="file_names" value="{{ draft.file_names|e }}">
+    <input type="hidden" name="ocr_text" value="{{ raw_text or draft.ocr_text }}">
+
+    <label>
+      <span>Opis stroška / Storitev</span>
+      <input name="description" value="{{ draft.description }}" required>
+    </label>
+    <div class="two-col">
+      <label>
+        <span>Kategorija</span>
+        <input list="category-options" name="category" value="{{ draft.category }}" required>
+        <datalist id="category-options">
+          {% for category in categories %}
+            <option value="{{ category }}"></option>
+          {% endfor %}
+        </datalist>
+      </label>
+      <label>
+        <span>Datum</span>
+        <input type="date" name="date" value="{{ iso_date(draft.date) }}">
+      </label>
+    </div>
+    <div class="two-col">
+      <label>
+        <span>Dobavitelj / Izvajalec</span>
+        <input list="vendor-options" name="vendor" value="{{ draft.vendor }}">
+        <datalist id="vendor-options">
+          {% for vendor in vendors %}
+            <option value="{{ vendor }}"></option>
+          {% endfor %}
+        </datalist>
+      </label>
+      <label>
+        <span>Račun / Ref.</span>
+        <input name="reference" value="{{ draft.reference }}">
+      </label>
+    </div>
+    <div class="payment-block">
+      <label>
+        <span>Skupna cena z DDV (€)</span>
+        <input id="total" name="total" inputmode="decimal" value="{{ draft.total }}" required>
+      </label>
+      <div>
+        <span class="field-label">Kdo je plačal?</span>
+        <div class="payer-toggle">
+          <label>
+            <input type="radio" name="payer_mode" value="Unknown">
+            <span>Neznano</span>
+          </label>
+          <label>
+            <input type="radio" name="payer_mode" value="Ana">
+            <span>Ana</span>
+          </label>
+          <label>
+            <input type="radio" name="payer_mode" value="Jakob">
+            <span>Jakob</span>
+          </label>
+          <label>
+            <input type="radio" name="payer_mode" value="Split">
+            <span>Split</span>
+          </label>
+        </div>
+      </div>
+      <div id="split-fields" class="two-col split-fields">
+        <label>
+          <span>Plačala Ana (€)</span>
+          <input id="ana_paid" name="ana_paid" inputmode="decimal" value="{{ draft.ana_paid }}">
+        </label>
+        <label>
+          <span>Plačal Jakob (€)</span>
+          <input id="jakob_paid" name="jakob_paid" inputmode="decimal" value="{{ draft.jakob_paid }}">
+        </label>
+      </div>
+    </div>
+    <label>
+      <span>Opombe</span>
+      <textarea name="notes" rows="3">{{ draft.notes }}</textarea>
+    </label>
+    {% if can_add_files %}
+      <label>
+        <span>Add more files</span>
+        <input type="file" name="attachments" multiple>
+      </label>
+    {% endif %}
+    <div class="form-actions">
+      <a class="button" href="{{ url_for('expenses') }}">Cancel</a>
+      <button class="button primary" type="submit">{{ submit_label }}</button>
+    </div>
+  </form>
+
+  <aside class="panel ocr-panel">
+    <h2>Receipt preview</h2>
+    {% if files %}
+      <div class="receipt-gallery">
+        {% for file in files %}
+          <div class="receipt-preview-item">
+            <a class="receipt-preview" href="{{ url_for('uploaded_file', file_name=file.file_name) }}" target="_blank">
+              {% if is_image_file(file.file_name) %}
+                <img src="{{ url_for('uploaded_file', file_name=file.file_name) }}" alt="Uploaded receipt preview">
+              {% else %}
+                <span>Open {{ file.original_name }}</span>
+              {% endif %}
+            </a>
+            <a class="attachment-name" href="{{ url_for('uploaded_file', file_name=file.file_name) }}" target="_blank">
+              <strong>{{ file_label(file.original_name) }}</strong>
+              <span>{{ file.original_name }}</span>
+            </a>
+            {% if can_add_files %}
+              <form method="post" action="{{ url_for('delete_receipt_file', receipt_id=request.view_args.receipt_id, file_name=file.file_name) }}">
+                <button type="submit">Delete</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="receipt-preview empty-preview">No files uploaded yet.</div>
+    {% endif %}
+    <h2>Model input</h2>
+    <pre>{{ "Slike so poslane direktno v model brez OCR." if files else "Upload a receipt to send images to the model." }}</pre>
+    {% if audit_logs %}
+      <h2>History</h2>
+      <div class="audit-list">
+        {% for log in audit_logs %}
+          <div class="audit-item">
+            <div>
+              <strong>{{ log.action }}</strong>
+              {% if log.details_json.status %}
+                <small>Status: {{ log.details_json.status }}</small>
+              {% endif %}
+              {% if log.details_json.issues %}
+                <small>Issues: {{ log.details_json.issues|join("; ") }}</small>
+              {% endif %}
+              {% if log.details_json.suggestions %}
+                <small>Suggestions: {{ log.details_json.suggestions|join("; ") }}</small>
+              {% endif %}
+            </div>
+            <span>{{ format_date(log.created_at[:10]) }} {{ log.created_at[11:16] }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </aside>
+</section>
+
+<script>
+  const uploadForm = document.querySelector(".guided-upload");
+  const submitInput = document.querySelector("#receipt-files");
+  const addFiles = document.querySelector("#add-files");
+  const queuedFiles = document.querySelector("#queued-files");
+  const selectedFiles = [];
+
+  function syncFileInput() {
+    if (!window.DataTransfer || !submitInput) return false;
+    const transfer = new DataTransfer();
+    selectedFiles.forEach((file) => transfer.items.add(file));
+    submitInput.files = transfer.files;
+    return true;
+  }
+
+  function renderQueuedFiles() {
+    if (!queuedFiles) return;
+    queuedFiles.innerHTML = "";
+    if (!selectedFiles.length) {
+      queuedFiles.innerHTML = "<span>Ni izbranih datotek.</span>";
+      return;
+    }
+    selectedFiles.forEach((file, index) => {
+      const row = document.createElement("div");
+      row.className = "queued-file";
+      const name = document.createElement("span");
+      name.textContent = file.name;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Odstrani";
+      button.addEventListener("click", () => {
+        selectedFiles.splice(index, 1);
+        syncFileInput();
+        renderQueuedFiles();
+      });
+      row.append(name, button);
+      queuedFiles.append(row);
+    });
+  }
+
+  if (addFiles) {
+    addFiles.addEventListener("change", () => {
+      Array.from(addFiles.files || []).forEach((file) => selectedFiles.push(file));
+      if (syncFileInput()) addFiles.value = "";
+      renderQueuedFiles();
+    });
+  }
+
+  if (uploadForm) {
+    uploadForm.addEventListener("submit", (event) => {
+      syncFileInput();
+      if (!submitInput.files.length) {
+        event.preventDefault();
+        renderQueuedFiles();
+      }
+    });
+    renderQueuedFiles();
+  }
+
+  const total = document.querySelector("#total");
+  const ana = document.querySelector("#ana_paid");
+  const jakob = document.querySelector("#jakob_paid");
+  const receiptForm = document.querySelector(".receipt-form");
+  const splitFields = document.querySelector("#split-fields");
+  const payerInputs = Array.from(document.querySelectorAll("input[name='payer_mode']"));
+
+  function parseAmount(value) {
+    const normalized = String(value || "").replace("€", "").replace(",", ".").trim();
+    return normalized ? Number(normalized) : 0;
+  }
+
+  function updateTotalFromSplit() {
+    if (currentPayerMode() !== "Split") return;
+    const hasAna = ana.value.trim() !== "";
+    const hasJakob = jakob.value.trim() !== "";
+    if (!hasAna && !hasJakob) return;
+    total.value = (parseAmount(ana.value) + parseAmount(jakob.value)).toFixed(2);
+  }
+
+  function currentPayerMode() {
+    const checked = payerInputs.find((input) => input.checked);
+    return checked ? checked.value : "Unknown";
+  }
+
+  function setPayerMode(mode) {
+    const input = payerInputs.find((item) => item.value === mode);
+    if (input) input.checked = true;
+    syncPayerFields();
+  }
+
+  function inferInitialPayerMode() {
+    const anaAmount = parseAmount(ana.value);
+    const jakobAmount = parseAmount(jakob.value);
+    if (anaAmount > 0 && jakobAmount > 0) return "Split";
+    if (anaAmount > 0) return "Ana";
+    if (jakobAmount > 0) return "Jakob";
+    return "Unknown";
+  }
+
+  function syncPayerFields() {
+    const mode = currentPayerMode();
+    const amount = parseAmount(total.value);
+    splitFields.hidden = mode !== "Split";
+
+    if (mode === "Ana") {
+      ana.value = amount ? amount.toFixed(2) : "";
+      jakob.value = "";
+    } else if (mode === "Jakob") {
+      ana.value = "";
+      jakob.value = amount ? amount.toFixed(2) : "";
+    } else if (mode === "Unknown") {
+      ana.value = "";
+      jakob.value = "";
+    }
+  }
+
+  payerInputs.forEach((input) => {
+    input.addEventListener("change", syncPayerFields);
+  });
+
+  total.addEventListener("input", () => {
+    if (currentPayerMode() !== "Split") syncPayerFields();
+  });
+  ana.addEventListener("input", updateTotalFromSplit);
+  jakob.addEventListener("input", updateTotalFromSplit);
+
+  if (receiptForm) {
+    setPayerMode(inferInitialPayerMode());
+    receiptForm.addEventListener("submit", syncPayerFields);
+  }
+</script>
+{% endblock %}
