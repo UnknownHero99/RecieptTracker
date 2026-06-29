@@ -1826,8 +1826,6 @@ def normalize_form(form):
     has_split = ana is not None or jakob is not None
     if has_split:
         total = (ana or Decimal("0")) + (jakob or Decimal("0"))
-    elif total is not None and ana is None and jakob is None:
-        jakob = total
 
     return {
         "description": form.get("description", "").strip(),
