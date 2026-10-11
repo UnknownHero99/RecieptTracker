@@ -6,13 +6,12 @@
     <h1>{{ page_title }}</h1>
     <p class="upload-copy">Dodaj vse strani računa, potem pošlji slike v model.</p>
   </div>
-  <form class="upload-form guided-upload" method="post" action="{{ url_for('scan_receipt') }}" enctype="multipart/form-data">
-    <input id="receipt-files" class="file-submit-input" type="file" name="receipt" accept="image/*,.pdf" multiple>
-    <input id="add-files" class="file-picker" type="file" accept="image/*,.pdf" multiple>
+  <form id="scan-form" class="upload-form guided-upload" method="post" action="{{ url_for('scan_receipt') }}" enctype="multipart/form-data">
     <div class="upload-actions">
-      <label class="button" for="add-files">Dodaj datoteke</label>
-      <button class="button primary" type="submit">Pošlji slike v model</button>
+      <input id="receipt-files" class="upload-file-input" type="file" name="receipt" accept="image/*,.pdf" multiple>
+      <button class="button primary scan-submit" type="submit" data-loading-label="Obdelujem...">Pošlji slike v model</button>
     </div>
+    <div id="upload-status" class="upload-status" aria-live="polite"></div>
     <div id="queued-files" class="queued-files" aria-live="polite"></div>
   </form>
 </section>
@@ -175,58 +174,53 @@
 <script>
   const uploadForm = document.querySelector(".guided-upload");
   const submitInput = document.querySelector("#receipt-files");
-  const addFiles = document.querySelector("#add-files");
   const queuedFiles = document.querySelector("#queued-files");
-  const selectedFiles = [];
+  const uploadStatus = document.querySelector("#upload-status");
+  const scanSubmit = document.querySelector(".scan-submit");
 
-  function syncFileInput() {
-    if (!window.DataTransfer || !submitInput) return false;
-    const transfer = new DataTransfer();
-    selectedFiles.forEach((file) => transfer.items.add(file));
-    submitInput.files = transfer.files;
-    return true;
+  function selectedFiles() {
+    return Array.from((submitInput && submitInput.files) || []);
   }
 
   function renderQueuedFiles() {
     if (!queuedFiles) return;
+    const files = selectedFiles();
     queuedFiles.innerHTML = "";
-    if (!selectedFiles.length) {
+    if (!files.length) {
       queuedFiles.innerHTML = "<span>Ni izbranih datotek.</span>";
+      if (uploadStatus) uploadStatus.textContent = "";
       return;
     }
-    selectedFiles.forEach((file, index) => {
+    if (uploadStatus) {
+      uploadStatus.textContent = `${files.length} ${files.length === 1 ? "datoteka pripravljena" : "datotek pripravljenih"}.`;
+    }
+    files.forEach((file) => {
       const row = document.createElement("div");
       row.className = "queued-file";
       const name = document.createElement("span");
       name.textContent = file.name;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Odstrani";
-      button.addEventListener("click", () => {
-        selectedFiles.splice(index, 1);
-        syncFileInput();
-        renderQueuedFiles();
-      });
-      row.append(name, button);
+      row.append(name);
       queuedFiles.append(row);
     });
   }
 
-  if (addFiles) {
-    addFiles.addEventListener("change", () => {
-      Array.from(addFiles.files || []).forEach((file) => selectedFiles.push(file));
-      if (syncFileInput()) addFiles.value = "";
-      renderQueuedFiles();
-    });
+  if (submitInput) {
+    submitInput.addEventListener("change", renderQueuedFiles);
   }
 
   if (uploadForm) {
     uploadForm.addEventListener("submit", (event) => {
-      syncFileInput();
-      if (!submitInput.files.length) {
+      if (!selectedFiles().length) {
         event.preventDefault();
         renderQueuedFiles();
+        if (uploadStatus) uploadStatus.textContent = "Najprej dodaj vsaj eno sliko ali PDF.";
+        return;
       }
+      if (scanSubmit) {
+        scanSubmit.classList.add("is-loading");
+        scanSubmit.textContent = scanSubmit.dataset.loadingLabel || "Obdelujem...";
+      }
+      if (uploadStatus) uploadStatus.textContent = "Slike se pošiljajo v model. To lahko traja nekaj trenutkov.";
     });
     renderQueuedFiles();
   }

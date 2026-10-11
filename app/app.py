@@ -135,7 +135,25 @@ def create_app():
     def scan_receipt():
         uploads = valid_uploads(request.files.getlist("receipt"))
         if not uploads:
-            flash("Choose one or more files first.")
+            file_fields = {
+                key: [upload.filename for upload in request.files.getlist(key)]
+                for key in request.files.keys()
+            }
+            current_app.logger.warning(
+                "Scan request had no valid uploads. content_type=%s content_length=%s file_fields=%s form_keys=%s",
+                request.content_type,
+                request.content_length,
+                file_fields,
+                list(request.form.keys()),
+            )
+            if file_fields:
+                received = "; ".join(
+                    f"{key}: {', '.join(filename or '<empty filename>' for filename in filenames)}"
+                    for key, filenames in file_fields.items()
+                )
+                flash(f"No usable receipt file reached the server. Received file fields: {received}.")
+            else:
+                flash("No receipt file reached the server. If you run with Docker, recreate the container so the updated upload form is used.")
             return redirect(url_for("new_receipt"))
 
         files = [save_upload(upload) for upload in uploads]

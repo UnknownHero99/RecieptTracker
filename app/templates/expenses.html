@@ -53,13 +53,41 @@
         <tr>
           <th>Receipt</th>
           <th>Opis</th>
-          <th><a class="sort-link {% if sort_state.sort == 'category' %}active{% endif %}" href="{{ expense_sort_url('category') }}">Kategorija{% if sort_state.sort == 'category' %} {{ sort_state.direction }}{% endif %}</a></th>
-          <th><a class="sort-link {% if sort_state.sort == 'date' %}active{% endif %}" href="{{ expense_sort_url('date') }}">Datum{% if sort_state.sort == 'date' %} {{ sort_state.direction }}{% endif %}</a></th>
-          <th><a class="sort-link {% if sort_state.sort == 'vendor' %}active{% endif %}" href="{{ expense_sort_url('vendor') }}">Dobavitelj{% if sort_state.sort == 'vendor' %} {{ sort_state.direction }}{% endif %}</a></th>
+          <th>
+            <a class="sort-link {% if sort_state.sort == 'category' %}active{% endif %}" href="{{ expense_sort_url('category') }}">
+              Kategorija
+              {% if sort_state.sort == 'category' %}
+                <span class="sort-indicator" aria-label="{{ 'ascending' if sort_state.direction == 'asc' else 'descending' }}">{{ '↑' if sort_state.direction == 'asc' else '↓' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a class="sort-link {% if sort_state.sort == 'date' %}active{% endif %}" href="{{ expense_sort_url('date') }}">
+              Datum
+              {% if sort_state.sort == 'date' %}
+                <span class="sort-indicator" aria-label="{{ 'ascending' if sort_state.direction == 'asc' else 'descending' }}">{{ '↑' if sort_state.direction == 'asc' else '↓' }}</span>
+              {% endif %}
+            </a>
+          </th>
+          <th>
+            <a class="sort-link {% if sort_state.sort == 'vendor' %}active{% endif %}" href="{{ expense_sort_url('vendor') }}">
+              Dobavitelj
+              {% if sort_state.sort == 'vendor' %}
+                <span class="sort-indicator" aria-label="{{ 'ascending' if sort_state.direction == 'asc' else 'descending' }}">{{ '↑' if sort_state.direction == 'asc' else '↓' }}</span>
+              {% endif %}
+            </a>
+          </th>
           <th>Račun / Ref.</th>
           <th>Plačnik</th>
           <th>Validation</th>
-          <th class="num"><a class="sort-link {% if sort_state.sort == 'amount' %}active{% endif %}" href="{{ expense_sort_url('amount') }}">Znesek{% if sort_state.sort == 'amount' %} {{ sort_state.direction }}{% endif %}</a></th>
+          <th class="num">
+            <a class="sort-link {% if sort_state.sort == 'amount' %}active{% endif %}" href="{{ expense_sort_url('amount') }}">
+              Znesek
+              {% if sort_state.sort == 'amount' %}
+                <span class="sort-indicator" aria-label="{{ 'ascending' if sort_state.direction == 'asc' else 'descending' }}">{{ '↑' if sort_state.direction == 'asc' else '↓' }}</span>
+              {% endif %}
+            </a>
+          </th>
           <th></th>
         </tr>
       </thead>
@@ -111,21 +139,26 @@
             </td>
             <td class="num">{{ "%.2f"|format(receipt.total) }} €</td>
             <td class="actions">
-              <a href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">View</a>
-              <a href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}">Edit</a>
+              <a class="action-link" href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">View</a>
+              <a class="action-link" href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}">Edit</a>
               {% if receipt.files %}
                 {% if receipt.files|length > 1 %}
-                  <a href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">Open</a>
+                  <a class="action-link muted-action" href="{{ url_for('receipt_detail', receipt_id=receipt.id) }}">Files</a>
                 {% else %}
-                  <a href="{{ url_for('uploaded_file', file_name=primary_preview_file(receipt.files).file_name) }}" target="_blank">Open</a>
+                  <a class="action-link muted-action" href="{{ url_for('uploaded_file', file_name=primary_preview_file(receipt.files).file_name) }}" target="_blank">File</a>
                 {% endif %}
               {% endif %}
-              <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}" onsubmit="return confirm('Move this expense to trash?');">
-                <button type="submit">Delete</button>
-              </form>
-              <form method="post" action="{{ url_for('validate_receipt_with_llm', receipt_id=receipt.id) }}">
-                <button type="submit">Validate</button>
-              </form>
+              <details class="action-menu">
+                <summary>More</summary>
+                <div class="action-menu-items">
+                  <form method="post" action="{{ url_for('validate_receipt_with_llm', receipt_id=receipt.id) }}">
+                    <button type="submit">Validate</button>
+                  </form>
+                  <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}" onsubmit="return confirm('Move this expense to trash?');">
+                    <button class="danger-action" type="submit">Delete</button>
+                  </form>
+                </div>
+              </details>
             </td>
           </tr>
         {% else %}
