@@ -65,6 +65,7 @@ LLM_IMAGE_MAX_SIDE = int(os.environ.get("LLM_IMAGE_MAX_SIDE", "1600"))
 LLM_IMAGE_JPEG_QUALITY = int(os.environ.get("LLM_IMAGE_JPEG_QUALITY", "85"))
 BACKUP_INTERVAL_HOURS = int(os.environ.get("BACKUP_INTERVAL_HOURS", "24"))
 BACKUP_RETENTION_DAYS = int(os.environ.get("BACKUP_RETENTION_DAYS", "30"))
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 
 def create_app():
@@ -416,6 +417,7 @@ def create_app():
             "format_datetime": format_datetime,
             "format_file_size": format_file_size,
             "expense_sort_url": expense_sort_url,
+            "app_version": APP_VERSION,
         }
 
     return app

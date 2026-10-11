@@ -27,7 +27,8 @@ a {
 }
 
 main,
-.topbar {
+.topbar,
+.app-footer {
   width: min(1180px, calc(100vw - 32px));
   margin: 0 auto;
 }
@@ -38,6 +39,12 @@ main,
   justify-content: space-between;
   gap: 24px;
   padding: 24px 0 18px;
+}
+
+.app-footer {
+  padding: 24px 0 32px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .brand {
