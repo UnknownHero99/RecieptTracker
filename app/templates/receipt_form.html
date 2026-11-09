@@ -178,7 +178,27 @@
   const uploadStatus = document.querySelector("#upload-status");
   const scanSubmit = document.querySelector(".scan-submit");
 
+  // A file input replaces its selection every time the picker is opened, and a
+  // phone camera returns one photo per capture. Keep our own queue so each new
+  // photo is added to the earlier ones, then mirror the queue into the input.
+  const queue = [];
+  const canSyncInput = (() => {
+    try {
+      return Boolean(window.DataTransfer && new DataTransfer().files);
+    } catch (error) {
+      return false;
+    }
+  })();
+
+  function syncFileInput() {
+    if (!canSyncInput || !submitInput) return;
+    const transfer = new DataTransfer();
+    queue.forEach((file) => transfer.items.add(file));
+    submitInput.files = transfer.files;
+  }
+
   function selectedFiles() {
+    if (canSyncInput) return queue.slice();
     return Array.from((submitInput && submitInput.files) || []);
   }
 
@@ -194,18 +214,39 @@
     if (uploadStatus) {
       uploadStatus.textContent = `${files.length} ${files.length === 1 ? "datoteka pripravljena" : "datotek pripravljenih"}.`;
     }
-    files.forEach((file) => {
+    files.forEach((file, index) => {
       const row = document.createElement("div");
       row.className = "queued-file";
       const name = document.createElement("span");
-      name.textContent = file.name;
+      name.textContent = `${index + 1}. ${file.name}`;
       row.append(name);
+      if (canSyncInput) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Odstrani";
+        remove.addEventListener("click", () => {
+          queue.splice(index, 1);
+          syncFileInput();
+          renderQueuedFiles();
+        });
+        row.append(remove);
+      }
       queuedFiles.append(row);
     });
   }
 
   if (submitInput) {
-    submitInput.addEventListener("change", renderQueuedFiles);
+    submitInput.addEventListener("change", () => {
+      if (canSyncInput) {
+        // New picks arrive alone in the input; append them to the queue. An empty
+        // change (picker cancelled) just restores the queue into the input.
+        Array.from(submitInput.files || []).forEach((file) => {
+          if (!queue.includes(file)) queue.push(file);
+        });
+        syncFileInput();
+      }
+      renderQueuedFiles();
+    });
   }
 
   if (uploadForm) {
